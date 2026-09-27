@@ -1,0 +1,58 @@
+[
+  {
+    "id": "blast_furnace_165",
+    "name": "Molten Iron (Blast Furnace)",
+    "buildingId": "blast_furnace",
+    "time": 20,
+    "inputs": [
+      {
+        "resourceId": "iron_ore",
+        "amount": 10
+      },
+      {
+        "resourceId": "coal",
+        "amount": 4
+      }
+    ],
+    "outputs": [
+      {
+        "resourceId": "molten_iron",
+        "amount": 8
+      },
+      {
+        "resourceId": "slag",
+        "amount": 4
+      },
+      {
+        "resourceId": "exhaust",
+        "amount": 8
+      }
+    ]
+  },
+  {
+    "id": "metal_caster_167",
+    "name": "Iron (Metal Caster)",
+    "buildingId": "metal_caster",
+    "time": 20,
+    "inputs": [
+      {
+        "resourceId": "molten_iron",
+        "amount": 4
+      },
+      {
+        "resourceId": "water",
+        "amount": 2
+      }
+    ],
+    "outputs": [
+      {
+        "resourceId": "iron",
+        "amount": 4
+      },
+      {
+        "resourceId": "steam_low",
+        "amount": 2
+      }
+    ]
+  }
+]

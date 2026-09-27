@@ -1,0 +1,58 @@
+﻿[
+  {
+    "id": "iron_ore",
+    "name": "Iron Ore",
+    "icon": "iron_ore",
+    "category": "ore",
+    "color": "#a8553a"
+  },
+  {
+    "id": "coal",
+    "name": "Coal",
+    "icon": "coal",
+    "category": "fuel",
+    "color": "#333333"
+  },
+  {
+    "id": "molten_iron",
+    "name": "Molten Iron",
+    "icon": "molten_iron",
+    "category": "liquid",
+    "color": "#ff6600"
+  },
+  {
+    "id": "slag",
+    "name": "Slag",
+    "icon": "slag",
+    "category": "waste",
+    "color": "#786d5f"
+  },
+  {
+    "id": "exhaust",
+    "name": "Exhaust",
+    "icon": "exhaust",
+    "category": "gas",
+    "color": "#888888"
+  },
+  {
+    "id": "water",
+    "name": "Water",
+    "icon": "water",
+    "category": "liquid",
+    "color": "#0099ff"
+  },
+  {
+    "id": "iron",
+    "name": "Iron",
+    "icon": "iron",
+    "category": "material",
+    "color": "#9ca3af"
+  },
+  {
+    "id": "steam_low",
+    "name": "Steam (Low)",
+    "icon": "steam_low",
+    "category": "steam",
+    "color": "#dbeafe"
+  }
+]

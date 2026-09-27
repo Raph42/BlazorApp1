@@ -1,0 +1,55 @@
+﻿using Blazor.Diagrams.Core.Geometry;
+using Blazor.Diagrams.Core.Models;
+
+namespace BlazorApp1.Models;
+
+public class MachineNodeModel : NodeModel
+{
+    public Recipe Recipe { get; }
+    public decimal Multiplier { get; set; } = 1.0m;
+
+    public MachineNodeModel(Recipe recipe, Point? position = null) : base(position)
+    {
+        Recipe = recipe;
+        Title = recipe.Name;
+
+        if (recipe.Time == null || recipe.Time <= 0)
+        {
+            Console.Error.WriteLine($"[Avertissement] La recette '{recipe.Id}' ({recipe.Name}) n'a pas de durée valide (Time: {recipe.Time}).");
+        }
+
+        // Entrées à gauche : on passe l'ID, le parent (this), et l'alignement
+        foreach (var input in recipe.Inputs)
+        {
+            //AddPort(new PortModel(input.ResourceId, this, PortAlignment.Left));
+            AddPort(new ResourcePortModel(input.ResourceId, this, PortDirection.Input, PortAlignment.Left));
+        }
+
+        // Sorties à droite : on passe l'ID, le parent (this), et l'alignement
+        foreach (var output in recipe.Outputs)
+        {
+            //AddPort(new PortModel(output.ResourceId, this, PortAlignment.Right));
+            AddPort(new ResourcePortModel(output.ResourceId, this, PortDirection.Output, PortAlignment.Right));
+        }
+
+    }
+
+    // Débit par minute (60 secondes) = (Quantité / Durée) * 60 * Multiplicateur
+    public decimal GetInputRatePerMin(RecipeItem item)
+    {
+        if (Recipe.Time is null or <= 0)
+            return 0m;
+
+        return (item.Amount / Recipe.Time.Value) * 60m * Multiplier;
+    }
+
+    public decimal GetOutputRatePerMin(RecipeItem item)
+    {
+        if (Recipe.Time is null or <= 0)
+            return 0m;
+
+        return (item.Amount / Recipe.Time.Value) * 60m * Multiplier;
+    }
+
+
+}

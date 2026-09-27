@@ -1,0 +1,29 @@
+﻿@* injecter le style stroke en ligne directement avec la couleur de la ressource *@
+
+@using Blazor.Diagrams.Components.Renderers
+@using Blazor.Diagrams.Core.Models
+@using BlazorApp1.Models
+@inherits LinkWidget
+
+<g class="resource-link @(Link.Selected ? "selected" : "")" style="@StyleString">
+    @base.BuildRenderTree
+</g>
+
+<style>
+    .resource-link path {
+        stroke: var(--link-color, #38bdf8) !important;
+        stroke-width: 3px !important;
+        fill: none !important;
+    }
+
+    .resource-link.selected path {
+        stroke: #fbbf24 !important;
+        stroke-width: 4px !important;
+    }
+</style>
+
+@code {
+    private string StyleString => Link is ResourceLinkModel resLink && !string.IsNullOrWhiteSpace(resLink.Color)
+        ? $"--link-color: {resLink.Color};"
+        : "--link-color: #38bdf8;";
+}

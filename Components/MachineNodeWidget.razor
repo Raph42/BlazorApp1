@@ -1,0 +1,285 @@
+﻿<!--
+Pour que le diagramme sache qu'il doit utiliser MachineNodeWidget
+chaque fois qu'il rencontre un MachineNodeModel, on l'enregistre dans le composant
+d'enregistrement de Blazor.Diagrams. Dans Pages/Home.razor 
+
+et
+Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
+-->
+
+@using Blazor.Diagrams.Components.Renderers
+@using Blazor.Diagrams.Core
+@using BlazorApp1.Models
+
+<div class="machine-card @(Node.Selected ? "selected" : "")">
+    <!-- En-tête : Titre à gauche, Actions (sélecteur + croix) à droite -->
+    <div class="machine-header">
+        <div class="d-flex align-center gap-1">
+            <span class="machine-title">@Node.Recipe.Name</span>
+            @if (Node.Recipe.Time is null or <= 0)
+            {
+                <MudTooltip Text="Durée 'Time' non renseignée ou nulle !" Arrow="true">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="MudBlazor.Size.Small" />
+                </MudTooltip>
+            }
+        </div>
+
+        <!-- Conteneur poussé tout à droite -->
+        <div class="header-actions">
+            <!-- 1. Sélecteur de quantité -->
+            <div class="multiplier-controls">
+                <button class="btn-step" @onclick="DecreaseCount">-</button>
+                <span class="multiplier-count">@Node.Multiplier.ToString("0.##")x</span>
+                <button class="btn-step" @onclick="IncreaseCount">+</button>
+            </div>
+            <!-- 2. Croix rouge immédiatement à sa droite -->
+            <button class="btn-delete" title="Supprimer la machine" @onclick="DeleteNode">✕</button>
+        </div>
+    </div>
+
+    <!-- Corps : Entrées à gauche, Icône Machine au centre, Sorties à droite -->
+    <div class="machine-body">
+        <!-- Colonne Entrées -->
+        <div class="port-column inputs">
+            @for (int i = 0; i < Node.Recipe.Inputs.Count; i++)
+            {
+                var input = Node.Recipe.Inputs[i];
+                var port = Node.Ports[i];
+                <div class="port-row input-row">
+                    <PortRenderer Port="port" Class="diagram-port" />
+
+                    @* Pour chaque entrée, on affiche le badge de ressource et le taux d'entrée par minute.*@
+                    <ResourceBadge ResourceId="@input.ResourceId" />
+
+                    <span class="rate-label">@Node.GetInputRatePerMin(input).ToString("0.#")/m</span>
+                </div>
+            }
+        </div>
+
+
+        <!-- Centre : Icône du bâtiment -->
+        <div class="machine-center-icon">
+            <MudTooltip Text="@GetBuildingTooltip()" Arrow="true" Placement="Placement.Top">
+                <div class="building-icon-wrapper">
+                    <img src="@GetBuildingIconPath()" 
+                         alt="@Node.Recipe.BuildingId" 
+                         class="building-icon"
+                         draggable="false"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                    <!-- Secours si l'image n'est pas encore présente -->
+                    <div class="building-fallback" style="display:none;">
+                        <MudIcon Icon="@Icons.Material.Filled.Factory" Size="MudBlazor.Size.Medium" Color="Color.Default" />
+                    </div>
+                </div>
+            </MudTooltip>
+        </div>
+
+
+        <!-- Colonne Sorties -->
+        <div class="port-column outputs">
+            @for (int i = 0; i < Node.Recipe.Outputs.Count; i++)
+            {
+                var output = Node.Recipe.Outputs[i];
+                var port = Node.Ports[Node.Recipe.Inputs.Count + i];
+                <div class="port-row output-row">
+                    <span class="rate-label">@Node.GetOutputRatePerMin(output).ToString("0.#")/m</span>
+                    <ResourceBadge ResourceId="@output.ResourceId" />
+                    <PortRenderer Port="port" Class="diagram-port" />
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .machine-card {
+        min-width: 280px;
+        background: #2b2b2b;
+        border: 2px solid #3f3f46;
+        border-radius: 8px;
+        color: #f4f4f5;
+        font-family: sans-serif;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        user-select: none;
+    }
+    .machine-card.selected {
+        border-color: #3b82f6;
+    }
+    .machine-header {
+        background: #18181b;
+        padding: 6px 8px 6px 12px;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        display: flex;
+        justify-content: space-between; /* Pousse le titre à gauche et les actions à droite */
+        align-items: center;
+        border-bottom: 1px solid #3f3f46;
+    }
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px; /* Espace net entre le sélecteur et la croix */
+        margin-left: auto; /* Force l'alignement tout à droite */
+    }
+    .machine-title {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .multiplier-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-step {
+        background: #3f3f46;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        width: 20px;
+        height: 20px;
+        line-height: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .btn-step:hover {
+        background: #52525b;
+    }
+    .btn-delete {
+        background: transparent;
+        border: none;
+        color: #ef4444;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        line-height: 1;
+        padding: 0;
+    }
+    .btn-delete:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }
+    .multiplier-count {
+        font-size: 0.8rem;
+        min-width: 32px;
+        text-align: center;
+        color: #60a5fa;
+    }
+    .machine-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        gap: 12px;
+    }
+    .port-column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+    }
+    .port-row {
+        display: flex;
+        align-items: center;
+        font-size: 0.75rem;
+        gap: 8px;
+    }
+    .input-row {
+        padding-left: 0;
+    }
+    .output-row {
+        padding-right: 0;
+        justify-content: flex-end;
+    }
+    .rate-label {
+        color: #a1a1aa;
+        font-size: 0.72rem;
+    }
+    .diagram-port {
+        width: 12px;
+        height: 12px;
+        background: #3b82f6;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        cursor: crosshair;
+    }
+
+    /* Style de l'icône centrale */
+    .machine-center-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px;
+    }
+    .building-icon-wrapper {
+        width: 60px;  /* Augmenté (ex: de 44px à 60px) */
+        height: 60px; /* Augmenté (ex: de 44px à 60px) */
+        background: #202022;
+        border: 1px solid #3f3f46;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px;
+        user-select: none;          /*     */
+        -webkit-user-drag: none;    /*     */
+    }
+    .building-icon {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;       /* Empêche l'image de capturer le clic */
+        -webkit-user-drag: none;    /* Désactive le glisser natif sous Chrome/Edge/Safari */
+        user-select: none;
+    }
+    .building-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;       /* Empêche l'icône de secours de capturer le clic */
+    }
+</style>
+
+@code {
+    [CascadingParameter] public BlazorDiagram Diagram { get; set; } = default!;
+    [Parameter] public MachineNodeModel Node { get; set; } = default!;
+
+    private void IncreaseCount()
+    {
+        Node.Multiplier += 1m;
+        Node.Refresh();
+    }
+
+    private void DecreaseCount()
+    {
+        if (Node.Multiplier > 1m)
+        {
+            Node.Multiplier -= 1m;
+            Node.Refresh();
+        }
+    }
+
+    private void DeleteNode()
+    {
+        Diagram.Nodes.Remove(Node);
+    }
+
+    private string GetBuildingIconPath() => $"images/buildings/{Node.Recipe.BuildingId}.png";
+
+    private string GetBuildingTooltip()
+    {
+        var clean = Node.Recipe.BuildingId.Replace("_", " ");
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(clean);
+    }
+
+}

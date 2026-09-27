@@ -1,0 +1,15 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h6">COI Calculator - Blazor</MudText>
+    </MudAppBar>
+    <MudMainContent Class="p-4">
+        @Body
+    </MudMainContent>
+</MudLayout>

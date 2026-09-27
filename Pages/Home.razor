@@ -1,0 +1,269 @@
+﻿@page "/"
+@inject HttpClient Http
+@using Blazor.Diagrams
+@using Blazor.Diagrams.Options
+@using Blazor.Diagrams.Core.Anchors;
+@using Blazor.Diagrams.Core.Models;
+@using Blazor.Diagrams.Core.Models.Base;
+@using Blazor.Diagrams.Core.Geometry
+@using Blazor.Diagrams.Components
+
+@using BlazorApp1.Models
+@using BlazorApp1.Components
+
+<MudPaper Height="calc(100vh - 100px)" Width="100%" Class="relative overflow-hidden d-flex">
+
+    <!-- Bouton pour ouvrir/fermer le tiroir latéral -->
+    <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                   Color="Color.Inherit"
+                   OnClick="@ToggleDrawer"
+                   Class="drawer-toggle-btn" />
+
+    <!-- Tiroir latéral rétractable MudBlazor -->
+    <MudDrawer @bind-Open="@_drawerOpen"
+               ClipMode="DrawerClipMode.Never"
+               Elevation="3"
+               Variant="@DrawerVariant.Responsive"
+               Width="340px"
+               Class="pa-3 bg-dark-drawer">
+        <MudDrawerHeader Class="px-0">
+            <MudText Typo="Typo.h6">Recettes COI</MudText>
+        </MudDrawerHeader>
+
+        <!-- Barre de recherche -->
+        <MudTextField @bind-Value="_searchQuery"
+                      Placeholder="Rechercher une recette..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Class="mb-3" />
+
+        <!-- Liste des recettes filtrées -->
+        <div class="recipes-list">
+            @if (FilteredRecipes != null)
+            {
+                @foreach (var recipe in FilteredRecipes)
+                {
+                    <MudCard Class="mb-2 recipe-card" Outlined="true">
+                        <MudCardContent Class="pa-2">
+                            <div class="d-flex justify-space-between align-center">
+                                <MudText Typo="Typo.subtitle2" Class="fw-bold">@recipe.Name</MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.AddCircle"
+                                               Color="Color.Primary"
+                                               Size="MudBlazor.Size.Small"
+                                               Title="Ajouter sur le diagramme"
+                                               OnClick="@(() => AddRecipeNode(recipe))" />
+                            </div>
+
+                            <div class="d-flex align-center gap-1 mt-1">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="me-1">In:</MudText>
+                                @foreach (var input in recipe.Inputs)
+                                {
+                                    <ResourceBadge ResourceId="@input.ResourceId" />
+                                }
+                                <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="ms-2 me-1">Out:</MudText>
+                                @foreach (var output in recipe.Outputs)
+                                {
+                                    <ResourceBadge ResourceId="@output.ResourceId" />
+                                }
+                            </div>
+
+
+                        </MudCardContent>
+                    </MudCard>
+                }
+            }
+            else
+            {
+                <MudProgressCircular Indeterminate="true" Size="MudBlazor.Size.Small" />
+            }
+        </div>
+    </MudDrawer>
+
+    <!-- Zone principale : Diagramme -->
+    <div class="flex-grow-1 h-100 position-relative">
+        @if (Diagram != null)
+        {
+            <CascadingValue Value="Diagram">
+                <DiagramCanvas Class="diagram-container">
+                </DiagramCanvas>
+            </CascadingValue>
+        }
+    </div>
+</MudPaper>
+
+
+<style>
+    .diagram-container {
+        width: 100%;
+        height: 100%;
+        background-color: #1e1e1e;
+        background-image: radial-gradient(#333 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    .drawer-toggle-btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 100;
+        background: rgba(30, 30, 30, 0.85);
+        color: white;
+    }
+
+    .drawer-toggle-btn:hover {
+        background: #333;
+     }
+
+    .bg-dark-drawer {
+        background-color: #242424 !important;
+        color: #f3f4f6;
+    }
+
+    .recipes-list {
+        overflow-y: auto;
+        max-height: calc(100vh - 220px);
+        padding-right: 4px;
+    }
+
+    .recipe-card {
+        background-color: #2f2f2f !important;
+        border-color: #444 !important;
+    }
+
+    /* Style des courbes de connexion */
+    .default-link path {
+        stroke: #38bdf8 !important; /* Bleu clair néon */
+        stroke-width: 3px !important;
+    }
+
+    /* Effet quand le lien est sélectionné */
+    .default-link.selected path {
+        stroke: #fbbf24 !important; /* Jaune doré */
+        stroke-width: 4px !important;
+    }
+
+    /* Animation ou survol d'un port prêt à être connecté */
+    .diagram-port:hover {
+        transform: scale(1.4);
+        background: #38bdf8 !important;
+        transition: transform 0.15s ease-in-out;
+    }
+</style>
+
+
+@code {
+    private BlazorDiagram Diagram { get; set; } = default!;
+    private List<Recipe>? Recipes { get; set; }
+
+    // Renommé pour éviter le conflit avec le namespace .NET "Resources"
+    private Dictionary<string, Resource> ResourceDict { get; set; } = new();
+
+    private bool _drawerOpen = true;
+    private string _searchQuery = "";
+    private double _spawnOffset = 150;
+
+    private IEnumerable<Recipe>? FilteredRecipes =>
+        string.IsNullOrWhiteSpace(_searchQuery)
+            ? Recipes
+            : Recipes?.Where(r => r.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                                  r.Inputs.Any(i => i.ResourceId.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)) ||
+                                  r.Outputs.Any(o => o.ResourceId.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Chargement des données globales
+        try
+        {
+            Recipes = await Http.GetFromJsonAsync<List<Recipe>>("data/recipes.json");
+
+            var resourceList = await Http.GetFromJsonAsync<List<Resource>>("data/resources.json");
+            if (resourceList != null)
+            {
+                ResourceDict = resourceList.ToDictionary(r => r.Id, r => r);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur : {ex.Message}");
+        }
+
+        // 2. Options et création de lien avec couleur globale
+        var options = new BlazorDiagramOptions
+        {
+            AllowMultiSelection = true,
+            AllowPanning = true,
+            Zoom = { Enabled = true },
+
+            Links =
+            {
+                // le PathGenerator décide de la manière de dessiner la ligne entre ces points
+                // (courbe, ligne droite ou angles brisés).
+                // StraightPathGenerator : trace des segments droits et nets entre les points calculés, supprimant toute courbure.
+                DefaultPathGenerator = new SmoothPathGenerator(),
+
+                // le Router calcule uniquement les points de passage (les coordonnées $X, Y$), 
+                //DefaultRouter = new OrthogonalRouter(),
+
+                EnableSnapping = true,
+
+                // Utilise notre modèle personnalisé lorsqu'un lien est tiré depuis un port
+                Factory = (diagram, source, position) =>
+                {
+                    Blazor.Diagrams.Core.Anchors.Anchor sourceAnchor = source switch
+                    {
+                        PortModel port => new SinglePortAnchor(port),
+                        NodeModel node => new ShapeIntersectionAnchor(node),
+                        _ => new SinglePortAnchor((PortModel)source)
+                    };
+
+                    var link = new ResourceLinkModel(sourceAnchor);
+
+                    // Récupère la couleur globale associée à l'identifiant de la ressource
+                    if (source is ResourcePortModel resPort)
+                    {
+                        if (ResourceDict.TryGetValue(resPort.ResourceId, out var res) && !string.IsNullOrWhiteSpace(res.Color))
+                        {
+                            link.Color = res.Color;
+                        }
+                    }
+
+                    return link;
+                }
+
+            }
+        };
+
+        Diagram = new BlazorDiagram(options);
+
+        // Enregistre le composant personnalisé pour les nœuds de machine
+        Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
+
+        // Enregistre le rendu visuel de notre lien personnalisé
+        Diagram.RegisterComponent<ResourceLinkModel, ResourceLinkWidget>();
+
+        // Deux nœuds initiaux
+        if (Recipes != null && Recipes.Count >= 2)
+        {
+            Diagram.Nodes.Add(new MachineNodeModel(Recipes[0], new Point(100, 150)));
+            Diagram.Nodes.Add(new MachineNodeModel(Recipes[1], new Point(450, 150)));
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void AddRecipeNode(Recipe recipe)
+    {
+        // Place le nouveau nœud avec un léger décalage à chaque clic
+        var node = new MachineNodeModel(recipe, new Point(_spawnOffset, _spawnOffset));
+        _spawnOffset += 40;
+        if (_spawnOffset > 400) _spawnOffset = 150;
+
+        Diagram.Nodes.Add(node);
+    }
+}

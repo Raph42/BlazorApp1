@@ -1,0 +1,59 @@
+﻿@using MudBlazor
+
+<MudTooltip Text="@GetTooltipText()" Placement="Placement.Top" Arrow="true">
+    <div class="resource-badge">
+        <img src="@GetIconPath()"
+             alt="@ResourceId"
+             class="resource-icon"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" />
+        <!-- Texte de secours si l'image n'est pas encore trouvée -->
+        <span class="resource-fallback" style="display:none;">@GetShortName()</span>
+    </div>
+</MudTooltip>
+
+<style>
+    .resource-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;  /* Augmenté (ex: de 26px à 36px) */
+        height: 36px; /* Augmenté (ex: de 26px à 36px) */
+        border-radius: 4px;
+        background: #1e1e1e;
+        border: 1px solid #444;
+        padding: 2px;
+        cursor: pointer;
+    }
+
+        .resource-badge:hover {
+            border-color: #3b82f6;
+        }
+
+    .resource-icon {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .resource-fallback {
+        font-size: 0.65rem;
+        color: #ddd;
+        text-transform: uppercase;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public string ResourceId { get; set; } = string.Empty;
+
+    private string GetIconPath() => $"images/resources/{ResourceId}.png";
+
+    // Nom affiché dans la bulle au survol : "res_molten_iron" -> "Molten Iron"
+    private string GetTooltipText()
+    {
+        var clean = ResourceId.Replace("_", " ");
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(clean);
+    }
+
+    private string GetShortName() =>
+        ResourceId.Replace("res_", "").Substring(0, Math.Min(3, ResourceId.Replace("res_", "").Length));
+}
