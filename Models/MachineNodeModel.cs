@@ -1,5 +1,6 @@
 ﻿using Blazor.Diagrams.Core.Geometry;
 using Blazor.Diagrams.Core.Models;
+using Blazor.Diagrams.Core.Anchors;
 
 namespace BlazorApp1.Models;
 
@@ -7,6 +8,11 @@ public class MachineNodeModel : NodeModel
 {
     public Recipe Recipe { get; }
     public decimal Multiplier { get; set; } = 1.0m;
+
+    // Débits réels calculés (Clé = ResourcePortModel.Id)
+    public Dictionary<string, decimal> ActualInputRates { get; } = new();
+    public Dictionary<string, decimal> DistributedOutputRates { get; } = new();
+
 
     public MachineNodeModel(Recipe recipe, Point? position = null) : base(position)
     {
@@ -34,6 +40,7 @@ public class MachineNodeModel : NodeModel
 
     }
 
+
     // Débit par minute (60 secondes) = (Quantité / Durée) * 60 * Multiplicateur
     public decimal GetInputRatePerMin(RecipeItem item)
     {
@@ -50,6 +57,12 @@ public class MachineNodeModel : NodeModel
 
         return (item.Amount / Recipe.Time.Value) * 60m * Multiplier;
     }
+
+    public decimal GetActualInputRate(string portId) =>
+        ActualInputRates.TryGetValue(portId, out var val) ? val : 0m;
+
+    public decimal GetDistributedOutputRate(string portId) =>
+        DistributedOutputRates.TryGetValue(portId, out var val) ? val : 0m;
 
 
 }

@@ -10,6 +10,7 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
 @using Blazor.Diagrams.Components.Renderers
 @using Blazor.Diagrams.Core
 @using BlazorApp1.Models
+@using BlazorApp1.Services
 
 <div class="machine-card @(Node.Selected ? "selected" : "")"
     @oncontextmenu="OnRightClick" 
@@ -41,20 +42,49 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
 
     <!-- Corps : Entrées à gauche, Icône Machine au centre, Sorties à droite -->
     <div class="machine-body">
+
         <!-- Colonne Entrées -->
         <div class="port-column inputs">
+
             @for (int i = 0; i < Node.Recipe.Inputs.Count; i++)
             {
                 var input = Node.Recipe.Inputs[i];
-                var port = Node.Ports[i];
-                <div class="port-row input-row">
-                    <PortRenderer Port="port" Class="diagram-port" />
+                var port = Node.Ports[i] as ResourcePortModel;
 
-                    @* Pour chaque entrée, on affiche le badge de ressource et le taux d'entrée par minute.*@
-                    <ResourceBadge ResourceId="@input.ResourceId" />
+                if (port != null)
+                {
+                    var theoreticalRate = Node.GetInputRatePerMin(input);
+                    var actualRate = Node.GetActualInputRate(port.Id);
+                    var hasLinks = port.Links.Count > 0;
 
-                    <span class="rate-label">@Node.GetInputRatePerMin(input).ToString("0.#")/m</span>
-                </div>
+                    // Statut couleur : vert si approvisionné, rouge si goulot/manque, grisé si non relié
+                    var statusClass = !hasLinks ? "rate-unlinked"
+                                    : (actualRate >= theoreticalRate - 0.01m) ? "rate-ok"
+                                    : "rate-warning";
+
+                    <div class="port-row input-row">
+                        <PortRenderer Port="port" Class="diagram-port" />
+                        <ResourceBadge ResourceId="@input.ResourceId" />
+                        <div class="rate-stack">
+
+                            @* 1. Débit théorique (tel qu'il était) *@
+                            <span class="rate-label">@theoreticalRate.ToString("0.#")/m</span>
+
+                            @* 2. Débit réel dessous avec couleur dynamique *@
+                            @if (hasLinks)
+                            {
+                                <span class="actual-rate @statusClass">
+                                    @actualRate.ToString("0.#")/m
+                                    @if (actualRate < theoreticalRate - 0.01m)
+                                    {
+                                        <small class="rate-pct">(@((actualRate / (theoreticalRate > 0 ? theoreticalRate : 1m) * 100m).ToString("0"))%)</small>
+                                    }
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+
             }
         </div>
 
@@ -82,12 +112,39 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
             @for (int i = 0; i < Node.Recipe.Outputs.Count; i++)
             {
                 var output = Node.Recipe.Outputs[i];
-                var port = Node.Ports[Node.Recipe.Inputs.Count + i];
-                <div class="port-row output-row">
-                    <span class="rate-label">@Node.GetOutputRatePerMin(output).ToString("0.#")/m</span>
-                    <ResourceBadge ResourceId="@output.ResourceId" />
-                    <PortRenderer Port="port" Class="diagram-port" />
-                </div>
+                var port = Node.Ports[Node.Recipe.Inputs.Count + i] as ResourcePortModel;
+                if (port != null)
+                {
+                    var theoreticalRate = Node.GetOutputRatePerMin(output);
+                    var distributedRate = Node.GetDistributedOutputRate(port.Id);
+                    var hasLinks = port.Links.Count > 0;
+
+                    // Statut couleur : vert si consommé à 100%, cyan si surplus
+                    var statusClass = !hasLinks ? "rate-unlinked"
+                                    : (distributedRate >= theoreticalRate - 0.01m) ? "rate-ok"
+                                    : "rate-surplus";
+
+                    <div class="port-row output-row">
+                        <div class="rate-stack text-right">
+                            @* 1. Débit théorique (tel qu'il était) *@
+                            <span class="rate-label">@theoreticalRate.ToString("0.#")/m</span>
+
+                            @* 2. Débit réel dessous avec couleur dynamique *@
+                            @if (hasLinks)
+                            {
+                                <span class="actual-rate @statusClass">
+                                    @distributedRate.ToString("0.#")/m
+                                    @if (theoreticalRate > distributedRate + 0.01m)
+                                    {
+                                        <small class="rate-pct surplus">(+@((theoreticalRate - distributedRate).ToString("0.#")))</small>
+                                    }
+                                </span>
+                            }
+                        </div>
+                        <ResourceBadge ResourceId="@output.ResourceId" />
+                        <PortRenderer Port="port" Class="diagram-port" />
+                    </div>
+                }
             }
         </div>
     </div>
@@ -201,10 +258,6 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         padding-right: 0;
         justify-content: flex-end;
     }
-    .rate-label {
-        color: #a1a1aa;
-        font-size: 0.72rem;
-    }
     .diagram-port {
         width: 12px;
         height: 12px;
@@ -250,6 +303,45 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         justify-content: center;
         pointer-events: none;       /* Empêche l'icône de secours de capturer le clic */
     }
+    /* Empilement des deux débits (théorique en haut, réel dessous) */
+    .rate-stack {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        line-height: 1.15;
+    }
+    .text-right {
+        text-align: right;
+        align-items: flex-end;
+    }
+    /* 1. Débit théorique (conservé d'origine) */
+    .rate-label {
+        color: #a1a1aa;
+        font-size: 0.72rem;
+    }
+    /* 2. Débit réel dynamique */
+    .actual-rate {
+        font-size: 0.70rem;
+        font-weight: 600;
+    }
+    /* Couleurs selon l'état */
+    .actual-rate.rate-ok {
+        color: #4ade80 !important; /* Vert : approvisionnement complet */
+    }
+    .actual-rate.rate-warning {
+        color: #f87171 !important; /* Rouge : sous-alimenté */
+    }
+    .actual-rate.rate-surplus {
+        color: #38bdf8 !important; /* Cyan / bleu : surplus non consommé */
+    }
+    .rate-pct {
+        font-size: 0.65rem;
+        font-weight: normal;
+    }
+    .rate-pct.surplus {
+        color: #38bdf8;
+    }
+
 </style>
 
 @code {
@@ -259,7 +351,8 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
     private void IncreaseCount()
     {
         Node.Multiplier += 1m;
-        Node.Refresh();
+        //Node.Refresh();
+        FlowEngine.RecalculateFlows(Diagram);
     }
 
     private void DecreaseCount()
@@ -267,7 +360,8 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         if (Node.Multiplier > 1m)
         {
             Node.Multiplier -= 1m;
-            Node.Refresh();
+            //Node.Refresh();
+            FlowEngine.RecalculateFlows(Diagram);
         }
     }
 

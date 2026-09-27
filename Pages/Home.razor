@@ -10,6 +10,7 @@
 
 @using BlazorApp1.Models
 @using BlazorApp1.Components
+@using BlazorApp1.Services
 
 <MudPaper Height="calc(100vh - 100px)" Width="100%" Class="relative overflow-hidden d-flex">
 
@@ -239,6 +240,18 @@
         };
 
         Diagram = new BlazorDiagram(options);
+
+        // Abonne le moteur de calcul aux événements d'ajout/suppression de liens et de nœuds
+        Diagram.Links.Added += link => 
+        {
+            link.TargetAttached += (l) => FlowEngine.RecalculateFlows(Diagram);
+        };
+        Diagram.Links.Removed += link => FlowEngine.RecalculateFlows(Diagram);
+        Diagram.Nodes.Removed += node => FlowEngine.RecalculateFlows(Diagram);
+
+        // Recalcul initial
+        FlowEngine.RecalculateFlows(Diagram);
+
 
         // Enregistre le composant personnalisé pour les nœuds de machine
         Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
