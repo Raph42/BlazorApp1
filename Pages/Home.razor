@@ -83,7 +83,9 @@
     </MudDrawer>
 
     <!-- Zone principale : Diagramme -->
-    <div class="flex-grow-1 h-100 position-relative">
+    <div class="flex-grow-1 h-100 position-relative outline-none"
+         tabindex="0" 
+         @onkeydown="HandleKeyDown">
         @if (Diagram != null)
         {
             <CascadingValue Value="Diagram">
@@ -134,16 +136,16 @@
     }
 
     /* Style des courbes de connexion */
-    .default-link path {
-        stroke: #38bdf8 !important; /* Bleu clair néon */
-        stroke-width: 3px !important;
-    }
+    /*.default-link path {
+    /*    stroke: #38bdf8 !important; /* Bleu clair néon */
+    /*    stroke-width: 3px !important;
+    /*}
 
     /* Effet quand le lien est sélectionné */
-    .default-link.selected path {
-        stroke: #fbbf24 !important; /* Jaune doré */
-        stroke-width: 4px !important;
-    }
+    /*.default-link.selected path {
+    /*    stroke: #fbbf24 !important; /* Jaune doré */
+    /*    stroke-width: 4px !important;
+    /*}
 
     /* Animation ou survol d'un port prêt à être connecté */
     .diagram-port:hover {
@@ -266,4 +268,25 @@
 
         Diagram.Nodes.Add(node);
     }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Delete" or "Backspace")
+        {
+            // 1. Récupère tous les liens sélectionnés et les supprime du diagramme
+            var selectedLinks = Diagram.Links.Where(l => l.Selected).ToList();
+            foreach (var link in selectedLinks)
+            {
+                Diagram.Links.Remove(link);
+            }
+
+            // 2. Supprime également les nœuds sélectionnés s'il y en a
+            var selectedNodes = Diagram.Nodes.Where(n => n.Selected).ToList();
+            foreach (var node in selectedNodes)
+            {
+                Diagram.Nodes.Remove(node);
+            }
+        }
+    }
+
 }

@@ -11,7 +11,9 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
 @using Blazor.Diagrams.Core
 @using BlazorApp1.Models
 
-<div class="machine-card @(Node.Selected ? "selected" : "")">
+<div class="machine-card @(Node.Selected ? "selected" : "")"
+    @oncontextmenu="OnRightClick" 
+    @oncontextmenu:preventDefault="true">
     <!-- En-tête : Titre à gauche, Actions (sélecteur + croix) à droite -->
     <div class="machine-header">
         <div class="d-flex align-center gap-1">
@@ -280,6 +282,11 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
     {
         var clean = Node.Recipe.BuildingId.Replace("_", " ");
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(clean);
+    }
+
+    private void OnRightClick()
+    {
+        DeleteNode();
     }
 
 }
