@@ -56,28 +56,35 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
                     var theoreticalRate = Node.GetInputRatePerMin(input);
                     var actualRate = Node.GetActualInputRate(port.Id);
                     var hasLinks = port.Links.Count > 0;
+                    var diff = actualRate - theoreticalRate;
 
-                    // Statut couleur : vert si approvisionné, rouge si goulot/manque, grisé si non relié
+                    // Statut couleur :
+                    // Rouge si sous-alimenté (< -0.01), Vert si équilibré, Grisé si non relié
                     var statusClass = !hasLinks ? "rate-unlinked"
-                                    : (actualRate >= theoreticalRate - 0.01m) ? "rate-ok"
-                                    : "rate-warning";
+                                    : (diff < -0.01m) ? "rate-warning"
+                                    : "rate-ok";
 
                     <div class="port-row input-row">
                         <PortRenderer Port="port" Class="diagram-port" />
                         <ResourceBadge ResourceId="@input.ResourceId" />
                         <div class="rate-stack">
+                            @* Ligne 1 : Débit théorique (Gris) *@
+                            <span class="rate-theoretical">@theoreticalRate.ToString("0.#")/m</span>
 
-                            @* 1. Débit théorique (tel qu'il était) *@
-                            <span class="rate-label">@theoreticalRate.ToString("0.#")/m</span>
-
-                            @* 2. Débit réel dessous avec couleur dynamique *@
                             @if (hasLinks)
                             {
-                                <span class="actual-rate @statusClass">
-                                    @actualRate.ToString("0.#")/m
-                                    @if (actualRate < theoreticalRate - 0.01m)
+                                @* Ligne 2 : Débit actuel réel *@
+                                <span class="rate-actual @statusClass">@actualRate.ToString("0.#")/m</span>
+
+                                @* Ligne 3 : Manque ou Équilibre *@
+                                <span class="rate-diff @statusClass">
+                                    @if (diff < -0.01m)
                                     {
-                                        <small class="rate-pct">(@((actualRate / (theoreticalRate > 0 ? theoreticalRate : 1m) * 100m).ToString("0"))%)</small>
+                                        <span>@diff.ToString("0.#")/m</span>
+                                    }
+                                    else
+                                    {
+                                        <span>0/m</span>
                                     }
                                 </span>
                             }
@@ -113,30 +120,43 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
             {
                 var output = Node.Recipe.Outputs[i];
                 var port = Node.Ports[Node.Recipe.Inputs.Count + i] as ResourcePortModel;
+
                 if (port != null)
                 {
                     var theoreticalRate = Node.GetOutputRatePerMin(output);
                     var distributedRate = Node.GetDistributedOutputRate(port.Id);
                     var hasLinks = port.Links.Count > 0;
 
-                    // Statut couleur : vert si consommé à 100%, cyan si surplus
+                    // Le surplus correspond à ce qui reste disponible : Capacité - Distribué
+                    var surplus = theoreticalRate - distributedRate;
+
+                    // Statut couleur :
+                    // - Non relié : gris
+                    // - Tout est consommé pile poil (surplus ~ 0) : Vert équilibré
+                    // - Consommation < Production (surplus > 0) : Vert ou Bleu/Orange (Surplus disponible)
                     var statusClass = !hasLinks ? "rate-unlinked"
-                                    : (distributedRate >= theoreticalRate - 0.01m) ? "rate-ok"
-                                    : "rate-surplus";
+                                    : (surplus > 0.01m) ? "rate-surplus" // ou "rate-ok" si tu veux du vert pur
+                                    : "rate-ok";
 
                     <div class="port-row output-row">
                         <div class="rate-stack text-right">
-                            @* 1. Débit théorique (tel qu'il était) *@
-                            <span class="rate-label">@theoreticalRate.ToString("0.#")/m</span>
+                            @* Ligne 1 : Débit théorique (Gris) *@
+                            <span class="rate-theoretical">@theoreticalRate.ToString("0.#")/m</span>
 
-                            @* 2. Débit réel dessous avec couleur dynamique *@
                             @if (hasLinks)
                             {
-                                <span class="actual-rate @statusClass">
-                                    @distributedRate.ToString("0.#")/m
-                                    @if (theoreticalRate > distributedRate + 0.01m)
+                                @* Ligne 2 : Débit actuel réel distribué *@
+                                <span class="rate-actual @statusClass">@distributedRate.ToString("0.#")/m</span>
+
+                                @* Ligne 3 : Surplus disponible restant *@
+                                <span class="rate-diff @statusClass">
+                                    @if (surplus > 0.01m)
                                     {
-                                        <small class="rate-pct surplus">(+@((theoreticalRate - distributedRate).ToString("0.#")))</small>
+                                        <span>+@surplus.ToString("0.#")/m</span>
+                                    }
+                                    else
+                                    {
+                                        <span>0/m</span>
                                     }
                                 </span>
                             }
@@ -303,7 +323,7 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         justify-content: center;
         pointer-events: none;       /* Empêche l'icône de secours de capturer le clic */
     }
-    /* Empilement des deux débits (théorique en haut, réel dessous) */
+    /* Empilement des 3 lignes */
     .rate-stack {
         display: flex;
         flex-direction: column;
@@ -314,32 +334,44 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         text-align: right;
         align-items: flex-end;
     }
-    /* 1. Débit théorique (conservé d'origine) */
-    .rate-label {
-        color: #a1a1aa;
-        font-size: 0.72rem;
-    }
-    /* 2. Débit réel dynamique */
-    .actual-rate {
+    /* Ligne 1 : Débit théorique (Gris) */
+    .rate-theoretical {
+        color: #9ca3af !important; /* Gris clair neutre */
         font-size: 0.70rem;
+    }
+
+    /* Ligne 2 : Débit actuel réel */
+    .rate-actual {
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    /* Ligne 3 : Manque ou Équilibre / Surplus */
+    .rate-diff {
+        font-size: 0.65rem;
         font-weight: 600;
     }
-    /* Couleurs selon l'état */
-    .actual-rate.rate-ok {
-        color: #4ade80 !important; /* Vert : approvisionnement complet */
+
+    /* --- Codes Couleurs --- */
+
+    /* Vert si équilibré */
+    .rate-ok {
+        color: #4ade80 !important;
     }
-    .actual-rate.rate-warning {
-        color: #f87171 !important; /* Rouge : sous-alimenté */
+
+    /* Rouge si sous-alimenté / goulot */
+    .rate-warning {
+        color: #f87171 !important;
     }
-    .actual-rate.rate-surplus {
-        color: #38bdf8 !important; /* Cyan / bleu : surplus non consommé */
+
+    /* Si tu veux du vert pour le surplus : mets #4ade80, si tu préfères bleu/cyan : #38bdf8, ou orange : #fb923c */
+    .rate-surplus {
+        color: #4ade80 !important; /* Vert pour le surplus positif */
     }
-    .rate-pct {
-        font-size: 0.65rem;
-        font-weight: normal;
-    }
-    .rate-pct.surplus {
-        color: #38bdf8;
+
+    /* Déconnecté (sans liens) */
+    .rate-unlinked {
+        color: #6b7280 !important;
     }
 
 </style>

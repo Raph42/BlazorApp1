@@ -54,5 +54,31 @@
         "amount": 2
       }
     ]
+  },
+  {
+    "id": "assembly_i_31",
+    "name": "CpAssemblyT1",
+    "buildingId": "assembly_i",
+    "time": 40,
+    "inputs": [
+      {
+        "resourceId": "iron",
+        "amount": 3
+      },
+      {
+        "resourceId": "wood",
+        "amount": 3
+      },
+      {
+        "resourceId": "concrete_slab",
+        "amount": 4
+      }
+    ],
+    "outputs": [
+      {
+        "resourceId": "construction_parts",
+        "amount": 4
+      }
+    ]
   }
 ]
