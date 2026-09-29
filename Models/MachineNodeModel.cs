@@ -12,7 +12,9 @@ public class MachineNodeModel : NodeModel
     // Débits réels calculés (Clé = ResourcePortModel.Id)
     public Dictionary<string, decimal> ActualInputRates { get; } = new();
     public Dictionary<string, decimal> DistributedOutputRates { get; } = new();
-
+    public Dictionary<string, decimal> DownstreamDemandRates { get; } = new();
+        public decimal GetDownstreamDemandRate(string portId) =>
+        DownstreamDemandRates.TryGetValue(portId, out var val) ? val : 0m;
 
     public MachineNodeModel(Recipe recipe, Point? position = null) : base(position)
     {

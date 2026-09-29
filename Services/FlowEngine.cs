@@ -18,13 +18,17 @@ public static class FlowEngine
         {
             node.ActualInputRates.Clear();
             node.DistributedOutputRates.Clear();
+            node.DownstreamDemandRates.Clear();
 
             foreach (var port in node.Ports.OfType<ResourcePortModel>())
             {
                 if (port.Direction == PortDirection.Input)
                     node.ActualInputRates[port.Id] = 0m;
                 else
+                {
                     node.DistributedOutputRates[port.Id] = 0m;
+                    node.DownstreamDemandRates[port.Id] = 0m;
+                }
             }
         }
 
@@ -81,6 +85,9 @@ public static class FlowEngine
                         totalDemand += demand;
                     }
                 }
+
+                // Mémoriser la demande totale requise en aval
+                sourceNode.DownstreamDemandRates[outputPort.Id] = totalDemand;
 
                 // Répartition du débit
                 decimal distributedTotal = 0m;
