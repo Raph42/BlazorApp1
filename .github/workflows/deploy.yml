@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ master ] # Remplace par 'master' si ta branche principale s'appelle master
+
+# Autorisations nécessaires pour publier sur GitHub Pages
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Récupérer le code source
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Installer l'environnement .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x' # Ou '8.0.x' selon ta version ciblée
+
+      # 3. Compiler et publier l'application Blazor WebAssembly
+      - name: Publish .NET app
+        run: dotnet publish -c Release -o release
+
+      # 4. Réécrire automatiquement la balise base href pour GitHub Pages
+      - name: Rewrite base href
+        run: sed -i 's/<base href="\/" \/>/<base href="\/BlazorApp1\/" \/>/g' release/wwwroot/index.html
+
+      # 5. Créer un fichier .nojekyll (indispensable pour Blazor sur GitHub Pages)
+      - name: Add .nojekyll
+        run: touch release/wwwroot/.nojekyll
+
+      # 6. Déployer sur la branche gh-pages
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: release/wwwroot
