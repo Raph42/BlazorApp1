@@ -54,10 +54,18 @@
     private Resource? Res => ResourceService.Get(ResourceId);
 
     // 1. Image : utilise le chemin exact défini dans le JSON, ou repli par défaut
-    private string ImagePath =>
-        !string.IsNullOrWhiteSpace(Res?.Image) 
-            ? Res.Image 
-            : $"images/resources/{ResourceId}.png";
+    private string ImagePath
+    {
+        get
+        {
+            var path = !string.IsNullOrWhiteSpace(Res?.Image) 
+                ? Res.Image 
+                : $"images/resources/{ResourceId}.png";
+
+            // Supprime le slash initial éventuel pour rester relatif à la base du site
+            return path.TrimStart('/');
+        }
+    }
 
     // 2. Nom : utilise le vrai nom du JSON (ex: "Acid", "Iron Ore")
     private string TooltipText =>
