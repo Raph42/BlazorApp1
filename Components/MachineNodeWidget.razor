@@ -67,9 +67,17 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
                     <div class="port-row input-row">
                         <PortRenderer Port="port" Class="diagram-port" />
                         <ResourceBadge ResourceId="@input.ResourceId" />
+
                         <div class="rate-stack">
-                            @* Ligne 1 : Débit théorique (Gris) *@
-                            <span class="rate-theoretical">@theoreticalRate.ToString("0.#")/m</span>
+                            @* Ligne 1 : Débit théorique total + Débit de base si Multiplier > 1 *@
+
+                            <span class="rate-theoretical">
+                                @theoreticalRate.ToString("0.#")/m
+                                @if (Node.Multiplier > 1m)
+                                {
+                                    <span class="rate-base">(@Node.GetBaseInputRatePerMin(input).ToString("0.#"))</span>
+                                }
+                            </span>
 
                             @if (hasLinks)
                             {
@@ -124,18 +132,18 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
                 if (port != null)
                 {
                     var theoreticalRate = Node.GetOutputRatePerMin(output);
+                    var actualProduced = Node.GetActualProducedRatePerMin(output); // Production réelle (prend en compte le manque d'entrées)
                     var distributedRate = Node.GetDistributedOutputRate(port.Id);
                     var downstreamDemand = Node.GetDownstreamDemandRate(port.Id);
                     var hasLinks = port.Links.Count > 0;
 
-                    // Balance : ce qu'on peut donner moins ce qui est réclamé en aval
-                    var balance = theoreticalRate - downstreamDemand;
+                    // Bilan : ce qu'on produit réellement moins ce que demande l'aval
+                    var balance = actualProduced - downstreamDemand;
 
                     // Statut couleur :
-                    // - Pas de liens : grisé
-                    // - Déficit (demande > production) : ROUGE
-                    // - Surplus (production > demande) : VERT (ou Bleu)
-                    // - Parfaitement équilibré : VERT
+                    // - Gris si non connecté
+                    // - Rouge si déficit
+                    // - Vert ou Bleu/Cyan si surplus ou équilibré
                     var statusClass = !hasLinks ? "rate-unlinked"
                                     : (balance < -0.01m) ? "rate-warning"
                                     : (balance > 0.01m) ? "rate-surplus"
@@ -143,15 +151,27 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
 
                     <div class="port-row output-row">
                         <div class="rate-stack text-right">
-                            @* Ligne 1 : Débit théorique (Gris) *@
-                            <span class="rate-theoretical">@theoreticalRate.ToString("0.#")/m</span>
+
+                            @* Ligne 1 : Débit théorique total (Gris) + Débit de base unitaire si Multiplier > 1 *@
+                            <span class="rate-theoretical">
+                                @if (Node.Multiplier > 1m)
+                                {
+                                    <span class="rate-base">(@Node.GetBaseOutputRatePerMin(output).ToString("0.#")) </span>
+                                }
+                                @theoreticalRate.ToString("0.#")/m
+                            </span>
+
+
+                            @* Ligne 2 : Toujours affichée (affiche 0/m en gris si non connecté, ou le débit réel distribué) *@
+                            <span class="rate-actual @statusClass">
+                                @*  @(hasLinks ? distributedRate.ToString("0.#") : "0")/m  *@
+                                @((hasLinks ? distributedRate : actualProduced).ToString("0.#"))/m
+                            </span>
+
 
                             @if (hasLinks)
                             {
-                                @* Ligne 2 : Débit actuel réel distribué *@
-                                <span class="rate-actual @statusClass">@distributedRate.ToString("0.#")/m</span>
-
-                                @* Ligne 3 : Manque (-) en rouge ou Surplus (+) en vert *@
+                                @* Ligne 3 : Manque / Surplus (affiché uniquement lorsqu'un tuyau est branché) *@
                                 <span class="rate-diff @statusClass">
                                     @if (balance > 0.01m)
                                     {
@@ -178,8 +198,12 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
 </div>
 
 <style>
+    /* 1. Largeur STRICTEMENT FIXE pour la carte de la machine */
     .machine-card {
-        min-width: 320px; /* Largeur minimale */
+        width: 350px !important; /* Largeur fixe garantie (ajuste à 340px ou 350px si besoin) */
+        min-width: 350px !important;
+        max-width: 350px !important;
+        box-sizing: border-box;
         background: #2b2b2b;
         border: 2px solid #3f3f46;
         border-radius: 8px;
@@ -201,13 +225,16 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         align-items: center;
         border-bottom: 1px solid #3f3f46;
     }
+    /* 2. Organisation du corps de la machine */
     .machine-body {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 4px; /* Un peu d'air sur les côtés */
-        gap: 16px; /* Espace agréable entre entrées, icône centrale et sorties */
+        padding: 10px 0;
+        box-sizing: border-box;
+        width: 100%;
     }
+
     .header-actions {
         display: flex;
         align-items: center;
@@ -266,23 +293,35 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         text-align: center;
         color: #60a5fa;
     }
+    /* 3. Colonnes d'entrées et de sorties : LARGEUR STRICTE ET IDENTIQUE */
     .port-column {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        flex: 1;
+        width: 130px !important; /* Largeur fixe identique à gauche et à droite */
+        min-width: 130px !important;
+        max-width: 130px !important;
+        flex-shrink: 0; /* Interdiction formelle de rétrécir */
+        box-sizing: border-box;
     }
+    .port-column.inputs {
+        padding-left: 0;
+    }
+    .port-column.outputs {
+        padding-right: 0;
+    }
+    /* 4. Les lignes de ports */
     .port-row {
         display: flex;
         align-items: center;
-        font-size: 0.75rem;
-        gap: 8px;
+        gap: 6px;
+        width: 100%;
+        box-sizing: border-box;
     }
     .input-row {
         padding-left: 0;
     }
     .output-row {
-        padding-right: 0;
         justify-content: flex-end;
     }
     .diagram-port {
@@ -293,13 +332,14 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         border-radius: 50%;
         cursor: crosshair;
     }
-
-    /* Style de l'icône centrale */
+    /* 6. Le centre : parfaitement figé */
     .machine-center-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 8px;
+        flex: 1; /* Reste centré entre les deux colonnes de 130px */
+        min-width: 60px;
+        flex-shrink: 0;
     }
     .building-icon-wrapper {
         width: 60px;  /* Augmenté (ex: de 44px à 60px) */
@@ -330,15 +370,17 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         justify-content: center;
         pointer-events: none;       /* Empêche l'icône de secours de capturer le clic */
     }
-    /* Empilement des 3 lignes */
+    /* 5. Conteneur de débit */
     .rate-stack {
         display: flex;
         flex-direction: column;
         justify-content: center;
         line-height: 1.15;
-        white-space: nowrap !important; /* Empêche tout retour à la ligne automatique */
-        min-width: 48px;                /* Offre une assise minimale pour les nombres décimaux */
-}
+        white-space: nowrap !important;
+        width: 65px; /* Assez large pour les chiffres à virgule ex: "(12) 36/m" */
+        min-width: 65px;
+        flex-shrink: 0;
+    }
     .text-right {
         text-align: right;
         align-items: flex-end;
@@ -349,7 +391,12 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
         font-size: 0.70rem;
         white-space: nowrap !important; /* Empêche tout retour à la ligne automatique */
     }
-
+    .rate-base {
+        color: #6b7280;
+        font-size: 0.62rem;
+        font-weight: normal;
+        opacity: 0.85;
+    }
     /* Ligne 2 : Débit actuel réel */
     .rate-actual {
         font-size: 0.72rem;
@@ -383,7 +430,7 @@ Diagram.RegisterComponent<MachineNodeModel, MachineNodeWidget>();
 
     /* Déconnecté (sans liens) */
     .rate-unlinked {
-        color: #6b7280 !important;
+        color: #38bdf8 !important;
     }
 
 </style>

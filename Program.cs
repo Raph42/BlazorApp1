@@ -1,4 +1,5 @@
 using BlazorApp1;
+using BlazorApp1.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
@@ -10,6 +11,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 builder.Services.AddMudServices();
-
+builder.Services.AddSingleton<ResourceService>();
 
 await builder.Build().RunAsync();

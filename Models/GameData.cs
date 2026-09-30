@@ -3,9 +3,8 @@
 public record Resource(
     string Id,
     string Name,
-    string Icon,
-    string Category,
-    string Color
+    string? Color,
+    string? Image
 );
 
 public record Building(

@@ -16,6 +16,14 @@ public class MachineNodeModel : NodeModel
         public decimal GetDownstreamDemandRate(string portId) =>
         DownstreamDemandRates.TryGetValue(portId, out var val) ? val : 0m;
 
+    // Taux de fonctionnement effectif (entre 0.0 et 1.0)
+    public decimal OperationalEfficiency { get; set; } = 1.0m;
+
+    // Production réelle effective bridée par le manque d'ingrédients
+    public decimal GetActualProducedRatePerMin(RecipeItem item) =>
+        GetOutputRatePerMin(item) * OperationalEfficiency;
+
+
     public MachineNodeModel(Recipe recipe, Point? position = null) : base(position)
     {
         Recipe = recipe;
@@ -66,5 +74,18 @@ public class MachineNodeModel : NodeModel
     public decimal GetDistributedOutputRate(string portId) =>
         DistributedOutputRates.TryGetValue(portId, out var val) ? val : 0m;
 
+
+    // méthode pour obtenir le débit de base unitaire(Multiplier = 1)
+    public decimal GetBaseInputRatePerMin(RecipeItem item)
+    {
+        if (Recipe.Time is null or <= 0) return 0m;
+        return (item.Amount / Recipe.Time.Value) * 60m;
+    }
+
+    public decimal GetBaseOutputRatePerMin(RecipeItem item)
+    {
+        if (Recipe.Time is null or <= 0) return 0m;
+        return (item.Amount / Recipe.Time.Value) * 60m;
+    }
 
 }

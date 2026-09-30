@@ -1,15 +1,20 @@
 ﻿@using MudBlazor
+@using BlazorApp1.Models
+@using BlazorApp1.Services
+@inject ResourceService ResourceService
 
-<MudTooltip Text="@GetTooltipText()" Placement="Placement.Top" Arrow="true">
+
+<MudTooltip Text="@TooltipText" Placement="Placement.Top" Arrow="true">
     <div class="resource-badge">
-        <img src="@GetIconPath()"
-             alt="@ResourceId"
-             class="resource-icon"
+        <img src="@ImagePath" 
+             alt="@TooltipText" 
+             class="resource-icon" 
              onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" />
-        <!-- Texte de secours si l'image n'est pas encore trouvée -->
-        <span class="resource-fallback" style="display:none;">@GetShortName()</span>
+        <!-- Repli textuel si l'image n'est pas trouvée -->
+        <span class="resource-fallback" style="display:none;">@FallbackName</span>
     </div>
 </MudTooltip>
+
 
 <style>
     .resource-badge {
@@ -45,15 +50,21 @@
 @code {
     [Parameter, EditorRequired] public string ResourceId { get; set; } = string.Empty;
 
-    private string GetIconPath() => $"images/resources/{ResourceId}.png";
+    // Récupération de la ressource dans le service
+    private Resource? Res => ResourceService.Get(ResourceId);
 
-    // Nom affiché dans la bulle au survol : "res_molten_iron" -> "Molten Iron"
-    private string GetTooltipText()
-    {
-        var clean = ResourceId.Replace("_", " ");
-        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(clean);
-    }
+    // 1. Image : utilise le chemin exact défini dans le JSON, ou repli par défaut
+    private string ImagePath =>
+        !string.IsNullOrWhiteSpace(Res?.Image) 
+            ? Res.Image 
+            : $"images/resources/{ResourceId}.png";
 
-    private string GetShortName() =>
-        ResourceId.Replace("res_", "").Substring(0, Math.Min(3, ResourceId.Replace("res_", "").Length));
+    // 2. Nom : utilise le vrai nom du JSON (ex: "Acid", "Iron Ore")
+    private string TooltipText =>
+        Res?.Name ?? System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(ResourceId.Replace("_", " "));
+
+    // 3. Trois premières lettres pour le secours
+    private string FallbackName =>
+        (Res?.Name ?? ResourceId).Substring(0, Math.Min(3, (Res?.Name ?? ResourceId).Length));
+
 }

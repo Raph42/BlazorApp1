@@ -1,5 +1,6 @@
 ﻿@page "/"
 @inject HttpClient Http
+@inject ResourceService ResourceService
 @using Blazor.Diagrams
 @using Blazor.Diagrams.Options
 @using Blazor.Diagrams.Core.Anchors;
@@ -186,6 +187,7 @@
             if (resourceList != null)
             {
                 ResourceDict = resourceList.ToDictionary(r => r.Id, r => r);
+                ResourceService.Load(resourceList);
             }
         }
         catch (Exception ex)
