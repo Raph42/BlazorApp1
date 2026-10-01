@@ -1,5 +1,4 @@
 ﻿// Parcourt les liaisons du diagramme et propage les flux :
-// test push github #2
 
 using Blazor.Diagrams;
 using Blazor.Diagrams.Core;
