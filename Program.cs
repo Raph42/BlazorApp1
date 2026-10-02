@@ -1,5 +1,5 @@
-using BlazorApp1;
-using BlazorApp1.Services;
+using CaptainArchitect;
+using CaptainArchitect.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;

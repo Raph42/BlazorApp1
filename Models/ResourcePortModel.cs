@@ -2,7 +2,7 @@
 using Blazor.Diagrams.Core.Models;
 using Blazor.Diagrams.Core.Models.Base;
 
-namespace BlazorApp1.Models;
+namespace CaptainArchitect.Models;
 
 public enum PortDirection
 {

@@ -3,7 +3,7 @@
 using Blazor.Diagrams.Core.Anchors;
 using Blazor.Diagrams.Core.Models;
 
-namespace BlazorApp1.Models;
+namespace CaptainArchitect.Models;
 
 public class ResourceLinkModel : LinkModel
 {

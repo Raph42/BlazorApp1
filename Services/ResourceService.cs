@@ -1,9 +1,9 @@
 ﻿// Classe pour rendre la liste des ressources accessible depuis n'importe quel composant
 // (évitant d'avoir à passer le dictionnaire de composant en composant)
 
-using BlazorApp1.Models;
+using CaptainArchitect.Models;
 
-namespace BlazorApp1.Services;
+namespace CaptainArchitect.Services;
 
 public class ResourceService
 {

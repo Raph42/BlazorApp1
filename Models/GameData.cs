@@ -1,4 +1,4 @@
-﻿namespace BlazorApp1.Models;
+﻿namespace CaptainArchitect.Models;
 
 public record Resource(
     string Id,

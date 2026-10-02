@@ -2,7 +2,7 @@
 using Blazor.Diagrams.Core.Models;
 using Blazor.Diagrams.Core.Anchors;
 
-namespace BlazorApp1.Models;
+namespace CaptainArchitect.Models;
 
 public class MachineNodeModel : NodeModel
 {

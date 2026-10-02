@@ -3,9 +3,9 @@
 using Blazor.Diagrams;
 using Blazor.Diagrams.Core;
 using Blazor.Diagrams.Core.Anchors;
-using BlazorApp1.Models;
+using CaptainArchitect.Models;
 
-namespace BlazorApp1.Services;
+namespace CaptainArchitect.Services;
 
 public static class FlowEngine
 {
